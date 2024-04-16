@@ -1,0 +1,22 @@
+---
+title: "Kernel Based Smoothers"
+author: "The Gang Boss"
+date: "2024-04-16"
+output: ioslides_presentation
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
+
+```
+
+## Intro Slide
+
+
+## Explanation
+
+## Plots
+
+
+## References
