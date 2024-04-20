@@ -11,34 +11,79 @@ knitr::opts_chunk$set(echo = FALSE)
 setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
 ```
 
-## Intro Slide
+## Overview
+Kernel Regression
+Is a smoothing function
 
 
+## What is a Kernel
+Kernel is just a function 
 
-## Explanation
-```{r}
+## Porperties of a Kernel
+Explaining the properties of a kernel
+
+## Kernel Examples
+```{r,warning=FALSE}
+library(ggplot2)
+n <- 200
+x <- seq(-1.5, 1.5, length=n)
+
+ynorm <- dnorm(x)
+yuniform <- dunif(x,min = -1, max=1)
+ytriang <- (1-abs(x))
+ytriweight <- 35/32*(1-x^2)^3
+ycosine <- pi/4*cos(pi/2*x)
+ytricube <- 70/81*(1-abs(x)^3)^3
+yquartic <- 15/16*(1-x^2)^2
+
+kernelNames <- c("Normal","Uniform", "Triangular", "Triweight", "Cosine", "Tricube", "Quartic")
+kernelYs <- c(ynorm,yuniform,ytriang,ytriweight,ycosine,ytricube,yquartic)
+kernels <- data.frame(X =rep(x,7), Y=kernelYs, Kernel= rep(kernelNames,each=n))
+
+ggplot(data=kernels,aes(x=X,y=Y, fill=Kernel))+
+  geom_line(aes(color=Kernel))+
+  scale_x_continuous(limits = c(-1, 1))+
+  scale_y_continuous(limits = c(0, 1.5))+
+  labs(title="Kernels and their Distribution")
+```
+
+
+## Pros Kernel Regression
+Non-parametric so good for not knowing underlying distribution
+used for not knowing underlying assumptions of the data
+
+
+## Cons of Kernel Regression
+Bit of a black box
+Don't get regression parameters
+Don't know exactly the equation of the line just 
+
+## How Kernel Regression Works
+Use this code for running on the mtcars are whatever sample dataset.   
+```{r, echo=FALSE}
 #Kernel regression
 # obtained from https://towardsdatascience.com/kernel-regression-made-easy-to-understand-86caf2d2b844
 # We can use some different data but the way kernel regression works
-datn <- data.frame(Area = c(11,22,33,44,50,56,67,70,78,89,90,100),       
-                   RiverFlow = c(2337,2750,2301,2500,1700,2100,1100,1750,1000,1642, 2000,1932))                                 
-x <- datn$Area
-y <- datn$RiverFlow
+
+set.seed(1)
+n <- 101
+x <- seq(0, 1, length.out = n)
+fx <- sin(2 * pi * x)
+y <- fx + rnorm(n, sd = 0.5)
 #function to calculate Gaussian kernel
 # Can use other types of kernels
 gausinKernel <- function(x,b){
   K <- (1/((sqrt(2*pi))))*exp(-0.5 *(x/b)^2)
   return(K)
 }
-
 # Higher bandwidth smoother flatter curve
 # Lower bandwidth more fit, can lead to overfitting
 # Basically represents the standard deviation in a 
 # kernel function
-b <- 10 #bandwidth
+b <- .05 #bandwidth
 
 # The x range the curve will have 
-kdeEstimateyX <- seq(5,110,1)
+kdeEstimateyX <- seq(0,1,length.out = n)
 ykernel <- NULL
 for(xesti in kdeEstimateyX){
   xx <-  xesti - x
@@ -49,20 +94,63 @@ for(xesti in kdeEstimateyX){
   xkyk <- c(xesti,yk)
   ykernel <- rbind(ykernel,xkyk)
 }
-plot(x,y,xlab = "Area", ylab = "Flow", col = 'blue', cex = 2)
+plot(x,y,xlab = "X value", ylab = "Y value", col = 'blue', cex = 2)
 lines(ykernel[,1],ykernel[,2], col = 'red', lwd = 2)
+title("Kernel Regression Fitting data from Sine Curve\n Bandwidth of .05 using a Gaussian Kernel")
 
-# This is just the slope values
-# ykernel
 
 
 ```
+
+## Example Using mtcars
+Find KD slope that best predicts mpg based on car weight
+Split data into training and testing split
+
+## Plot of different bandwidths
+
+## Accuracy test
+Show which was best 
+
+## Example using another sample data set
+This time test the two kernels box and guassion
+Split data into training test split
+
+
+## Plot of the two kernels
+
+## Accuracy test
+Explain results which more accurate
+
+## Crime Data Set
+Explain our Crime Data set
+What are we trying to predict
+Make it multivariate
+
+## Maybe some pots
+Show the plots ofo the predictor varaibles and such
+
+## Fit the Data
+Split data training testing
+
+## Plot different bandwidths
+Show accuracy of the different models
+
+## Plot different Kernels 
+Show accuracy of the different model kernels
+
+## Plot kernel bandwidth combos
+Plot like normal kernel with bandwidth x and box kernel with bandwidth y
+
+## Reslts
+Best of the best model in predicting our response
+
 
 
 ## Plots
 For these plots we will use our own crime data we find
 ```{r}
 # define function and data
+
 set.seed(1)
 n <- 101
 x <- seq(0, 1, length.out = n)
@@ -111,8 +199,10 @@ for(h in c(1:4)/60){
 
 
 ## Animation
-```{r}
+Not working
+```{r, warning = FALSE }
 library(animation)
+library(gganimate)
 h <- 1/60
 set.seed(1)
 n <- 101
@@ -122,32 +212,31 @@ fx <- sin(2 * pi * x)
 y <- fx + rnorm(n, sd = 0.5)
 ystarList <- c()
 points <- c()
-for(point in seq(0,1,length.out=n)){
-  
-  
- 
-  
+windows <- data.frame(Left=double(), Right=double())
+weights <- c()
+bandwidths <- c(1,120.1/60,2/60,3/60,4/60)
+for(point in seq(0, 1, length.out = n)){
   
   # plot 99% window
-  window <- c(point - 3 * h, point + 3 * h)
+  windows[nrow(windows)+1, ] <- c(point - 3 * h, point + 3 * h)
  
   
   # define weights
   w <- dnorm((x - point) / h) 
-  w <- w / sum(w)
+  weights <- c(weights,w / sum(w))
   
   # plot estimate
-  ystar <- sum(y * w)
+  ystar <- sum(y * w/sum(w))
   ystarList <- c(ystarList, ystar)
   points <- c(points, point)
   
-  plot(x, y, main = paste0("h = ", h * 60, "/60"), ylim = c(-2.5, 2.5),
-       cex.lab = 1.5, cex.axis = 1.25)
-  lines(x, fx, col = "blue", lwd = 2)
-  rect(window[1], -3, window[2], 3, col = cols)
-  points(point, ystar, pch = 17, col = "red", cex = 1)
-  lines(points, ystarList, col = "red", lwd=1)
-  
+  # plot(x, y, main = paste0("h = ", h * 60, "/60"), ylim = c(-2.5, 2.5),
+  #      cex.lab = 1.5, cex.axis = 1.25)
+  # lines(x, fx, col = "blue", lwd = 2)
+  # rect(window[1], -3, window[2], 3, col = cols)
+  # points(point, ystar, pch = 17, col = "red", cex = 1)
+  # lines(points, ystarList, col = "red", lwd=1)
+  # 
   # add legend
   # legend("topright", legend = c("data", "truth"),
   #        pch = c(1, NA), lty = c(NA, 1), col = c("black", "blue"), bty = "n")
@@ -155,8 +244,116 @@ for(point in seq(0,1,length.out=n)){
   #        pch = c(17, 15), col = c("red", "gray"), bty = "n")
   # 
 }
+fullPlotData <- data.frame(X=x, Y=y, Yestimate=ystarList, ModelY=fx, windows)
+
+p <- ggplot(data = fullPlotData)+
+  geom_point(aes(x=X,y=Y))+
+  geom_line(aes(x=X,y=ModelY),color='blue',lwd=1)+
+  geom_line(aes(x=X,y=Yestimate), color='red')+
+  geom_point(aes(x=X,y=Yestimate), pch=4, color='red')
+  
+p
+
+#animatePlot <- p+transition_states(seq_along(c(fullPlotData$X,fullPlotData$Yestimate)))+enter_fade()+  exit_fade()
+```
+
+```{r, warning = FALSE}
+# Under construction
+
+
+# Load required libraries
+library(ggplot2)
+library(gganimate)
+
+# Generate some sample data
+set.seed(123)
+data <- data.frame(
+  x = rnorm(100),
+  y = rnorm(100)
+)
+
+# Fit a linear regression model
+lm_model <- lm(y ~ x, data = data)
+
+# Create the base scatter plot
+base_plot <- ggplot(data, aes(x, y)) +
+  geom_point() +
+  labs(title = "Linear Regression Animation") +
+  theme_minimal()
+
+# Function to draw regression line at each step
+draw_lm <- function(step) {
+  coef <- coef(lm_model)
+  slope <- coef[2] * step
+  intercept <- coef[1] + coef[2] * mean(data$x)
+  abline(a = intercept, b = slope, col = "red")
+}
+
+# Animate the regression line
+animated_plot <- base_plot +
+  annotate(geom = "blank", x = 0, y = 0) +
+  enter_grow() +
+  exit_fade() +
+  shadow_mark(draw_lm, frames = length(data$x), id = "step") +
+  labs(title = "Step: {frame}")+ 
+  theme(aspect.ratio = 1)
+
+# Render the animation
+#animate(animated_plot, nframes = 100, fps = 10,width=800, height=600)
+
+
 
 ```
+```{r}
+# Underconstruction
+
+# set.seed(1)
+# f <- function(x1,x2){ dnorm(x1-0.5, sd=0.2)*dnorm(x2-0.5, sd=0.2) }
+# n <- 1000
+# X <- matrix(runif(n*2), n,2)
+# y <- f(X[,1],X[,2]) + rnorm(n,sd=0.4)
+# 
+# 
+# # Compute ˆf(x0, y0) and plot ˆf(x0, y0) and f(x0, y0) for (x0, y0) ∈ {(x, y) :
+# # x ∈ {1/21, 2/21, . . . , 20/21}, y ∈ {1/11, 2/11, . . . , 10/11}}, and then compute the ISE.
+# h0=0.05
+# xlist <- (1:20)/21; ylist <- (1:10)/11
+# n1 <- length(xlist); n2 <- length(ylist)
+# zm <- matrix(0, n1, n2)
+# for (i in 1:n1){ for (j in 1:n2){ zm[i,j] <- f(xlist[i], ylist[j]) } }
+# f.persp <- persp(xlist, ylist, zm, theta=20)
+# for (i in 1:n1){
+#   xi <- xlist[i]
+#   fhat.xi <- rep(0, n2)
+#   for (j in 1:n2){
+#     fhat.xi[j] <- ker.est(X, y, rep(h0,2), c(xi,ylist[j]))
+#   }
+#   lines(trans3d(xi, ylist, fhat.xi, pmat=f.persp), col=2)
+# }
+# dif1 <- function(u, v){ (f(u,v)-ker.est(X, y, rep(h0,2), c(u,v)))^2 }
+# tem1 <- function(u){
+#   tem2 <- function(v){ dif1(u,v)}
+#   vtem2 <- Vectorize(tem2)
+#   return(integrate(vtem2, 0, 1)$value)
+# }
+# vtem1 <- Vectorize(tem1)
+# integrate(vtem1, 0,1)$value
+# plot(ksmooth(mtcars$wt, mtcars$disp,kernel = "normal",bandwidth = .5), type = 'l')
+# plot(ksmooth(mtcars$wt, mtcars$disp,kernel = "box",bandwidth = .5), type = 'l')
+# 
+# 
+# plot(ksmooth(mtcars$wt, mtcars$disp,kernel = "normal",bandwidth = 1), type = 'l')
+# plot(ksmooth(mtcars$wt, mtcars$disp,kernel = "box",bandwidth = 1), type = 'l')
+# 
+# plot(ksmooth(mtcars$wt, mtcars$disp,kernel = "normal",bandwidth = 3), type = 'l')
+# plot(ksmooth(mtcars$wt, mtcars$disp,kernel = "box",bandwidth = 3), type = 'l')
+# 
+# plot((crime$population)/1000000, crime$homicide)
+# crime[ -c(crime[crime$state_name=="",])]
+# plot(crime$violent_crime, crime$robbery)
+```
+
+
 
 
 ## References
