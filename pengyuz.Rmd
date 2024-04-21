@@ -1,0 +1,460 @@
+---
+title: "Kernel Based Smoothers"
+author: "The Gang Boss"
+date: "2024-04-16"
+output:
+  slidy_presentation: default
+  beamer_presentation: default
+  ioslides_presentation: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+# Don't need to change this, should already set your directory the file is in. 
+setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
+```
+
+## Overview
+Kernel Regression
+Is a smoothing function
+
+
+## What is a Kernel
+Kernel is just a function 
+
+## Porperties of a Kernel
+Explaining the properties of a kernel
+
+## Kernel Examples
+```{r,warning=FALSE}
+library(ggplot2)
+n <- 200
+x <- seq(-1.5, 1.5, length=n)
+
+ynorm <- dnorm(x)
+yuniform <- dunif(x,min = -1, max=1)
+ytriang <- (1-abs(x))
+ytriweight <- 35/32*(1-x^2)^3
+ycosine <- pi/4*cos(pi/2*x)
+ytricube <- 70/81*(1-abs(x)^3)^3
+yquartic <- 15/16*(1-x^2)^2
+
+kernelNames <- c("Normal","Uniform", "Triangular", "Triweight", "Cosine", "Tricube", "Quartic")
+kernelYs <- c(ynorm,yuniform,ytriang,ytriweight,ycosine,ytricube,yquartic)
+kernels <- data.frame(X =rep(x,7), Y=kernelYs, Kernel= rep(kernelNames,each=n))
+
+ggplot(data=kernels,aes(x=X,y=Y, fill=Kernel))+
+  geom_line(aes(color=Kernel))+
+  scale_x_continuous(limits = c(-1, 1))+
+  scale_y_continuous(limits = c(0, 1.5))+
+  labs(title="Kernels and their Distribution")
+```
+
+
+## Pros Kernel Regression
+Non-parametric so good for not knowing underlying distribution
+used for not knowing underlying assumptions of the data
+
+
+## Cons of Kernel Regression
+Bit of a black box
+Don't get regression parameters
+Don't know exactly the equation of the line just 
+
+## How Kernel Regression Works
+Use this code for running on the mtcars are whatever sample dataset.   
+```{r, echo=FALSE}
+#Kernel regression
+# obtained from https://towardsdatascience.com/kernel-regression-made-easy-to-understand-86caf2d2b844
+# We can use some different data but the way kernel regression works
+
+set.seed(1)
+n <- 101
+x <- seq(0, 1, length.out = n)
+fx <- sin(2 * pi * x)
+y <- fx + rnorm(n, sd = 0.5)
+#function to calculate Gaussian kernel
+# Can use other types of kernels
+gausinKernel <- function(x,b){
+  K <- (1/((sqrt(2*pi))))*exp(-0.5 *(x/b)^2)
+  return(K)
+}
+# Higher bandwidth smoother flatter curve
+# Lower bandwidth more fit, can lead to overfitting
+# Basically represents the standard deviation in a 
+# kernel function
+b <- .05 #bandwidth
+
+# The x range the curve will have 
+kdeEstimateyX <- seq(0,1,length.out = n)
+ykernel <- NULL
+for(xesti in kdeEstimateyX){
+  xx <-  xesti - x
+  K <-gausinKernel(xx,b)
+  Ksum <- sum(K)
+  weight <- K/Ksum
+  yk <- sum(weight*y)
+  xkyk <- c(xesti,yk)
+  ykernel <- rbind(ykernel,xkyk)
+}
+plot(x,y,xlab = "X value", ylab = "Y value", col = 'blue', cex = 2)
+lines(ykernel[,1],ykernel[,2], col = 'red', lwd = 2)
+title("Kernel Regression Fitting data from Sine Curve\n Bandwidth of .05 using a Gaussian Kernel")
+
+
+
+```
+
+## Example Using mtcars
+Find KD slope that best predicts mpg based on car weight
+Split data into training and testing split
+
+## Plot of different bandwidths
+
+## Accuracy test
+Show which was best 
+
+## Example using another sample data set
+This time test the two kernels box and guassion
+Split data into training test split
+
+
+## Plot of the two kernels
+
+## Accuracy test
+Explain results which more accurate
+
+## Crime Data Set
+Explain our Crime Data set
+What are we trying to predict
+Make it multivariate
+
+## Maybe some pots
+Show the plots ofo the predictor varaibles and such
+
+## Fit the Data
+Split data training testing
+
+## Plot different bandwidths
+Show accuracy of the different models
+
+## Plot different Kernels 
+Show accuracy of the different model kernels
+
+## Plot kernel bandwidth combos
+Plot like normal kernel with bandwidth x and box kernel with bandwidth y
+
+## Reslts
+Best of the best model in predicting our response
+
+
+
+## Plots
+For these plots we will use our own crime data we find
+```{r}
+# define function and data
+
+set.seed(1)
+n <- 101
+x <- seq(0, 1, length.out = n)
+#x <- sort(runif(n,min = 0, max = 1))
+fx <- sin(2 * pi * x)
+# The y value is given some random error with variance of .5
+# run plot(x,y) to see original data plot
+y <- fx + rnorm(n, sd = 0.5)
+
+# define x* and color for window
+xstar <- 0.3
+cols <- rgb(190/255, 190/255, 190/255, alpha = 0.5)
+
+# set-up 2 x 2 subplot
+par(mfrow = c(2,2))
+
+# loop through h = c(1, 2, 3, 4) / 60
+# sds of 1/60 1/30 1/20 and 1/15
+for(h in c(1:4)/60){
+  
+  # plot data and true function
+  plot(x, y, main = paste0("h = ", h * 60, "/60"), ylim = c(-2.5, 2.5),
+       cex.lab = 1.5, cex.axis = 1.25)
+  lines(x, fx, col = "blue", lwd = 2)
+  
+  # plot 99% window
+  window <- c(xstar - 3 * h, xstar + 3 * h)
+  rect(window[1], -3, window[2], 3, col = cols)
+  
+  # define weights
+  w <- dnorm((x - xstar) / h) 
+  w <- w / sum(w)
+  
+  # plot estimate
+  ystar <- sum(y * w)
+  points(xstar, ystar, pch = 17, col = "red", cex = 1)
+  
+  # add legend
+  # legend("topright", legend = c("data", "truth"),
+  #        pch = c(1, NA), lty = c(NA, 1), col = c("black", "blue"), bty = "n")
+  # legend("bottomright", legend = c("estimate", "99% area"),
+  #        pch = c(17, 15), col = c("red", "gray"), bty = "n")
+  # 
+}
+```
+
+
+## Animation
+Not working
+```{r, warning = FALSE }
+library(animation)
+library(gganimate)
+h <- 1/60
+set.seed(1)
+n <- 101
+x <- seq(0, 1, length.out = n)
+fx <- sin(2 * pi * x)
+
+y <- fx + rnorm(n, sd = 0.5)
+ystarList <- c()
+points <- c()
+windows <- data.frame(Left=double(), Right=double())
+weights <- c()
+bandwidths <- c(1,120.1/60,2/60,3/60,4/60)
+for(point in seq(0, 1, length.out = n)){
+  
+  # plot 99% window
+  windows[nrow(windows)+1, ] <- c(point - 3 * h, point + 3 * h)
+ 
+  
+  # define weights
+  w <- dnorm((x - point) / h) 
+  weights <- c(weights,w / sum(w))
+  
+  # plot estimate
+  ystar <- sum(y * w/sum(w))
+  ystarList <- c(ystarList, ystar)
+  points <- c(points, point)
+  
+  # plot(x, y, main = paste0("h = ", h * 60, "/60"), ylim = c(-2.5, 2.5),
+  #      cex.lab = 1.5, cex.axis = 1.25)
+  # lines(x, fx, col = "blue", lwd = 2)
+  # rect(window[1], -3, window[2], 3, col = cols)
+  # points(point, ystar, pch = 17, col = "red", cex = 1)
+  # lines(points, ystarList, col = "red", lwd=1)
+  # 
+  # add legend
+  # legend("topright", legend = c("data", "truth"),
+  #        pch = c(1, NA), lty = c(NA, 1), col = c("black", "blue"), bty = "n")
+  # legend("bottomright", legend = c("estimate", "99% area"),
+  #        pch = c(17, 15), col = c("red", "gray"), bty = "n")
+  # 
+}
+fullPlotData <- data.frame(X=x, Y=y, Yestimate=ystarList, ModelY=fx, windows)
+
+p <- ggplot(data = fullPlotData)+
+  geom_point(aes(x=X,y=Y))+
+  geom_line(aes(x=X,y=ModelY),color='blue',lwd=1)+
+  geom_line(aes(x=X,y=Yestimate), color='red')+
+  geom_point(aes(x=X,y=Yestimate), pch=4, color='red')
+  
+p
+
+#animatePlot <- p+transition_states(seq_along(c(fullPlotData$X,fullPlotData$Yestimate)))+enter_fade()+  exit_fade()
+```
+
+```{r, warning = FALSE}
+# Under construction
+
+
+# Load required libraries
+library(ggplot2)
+library(gganimate)
+
+# Generate some sample data
+set.seed(123)
+data <- data.frame(
+  x = rnorm(100),
+  y = rnorm(100)
+)
+
+# Fit a linear regression model
+lm_model <- lm(y ~ x, data = data)
+
+# Create the base scatter plot
+base_plot <- ggplot(data, aes(x, y)) +
+  geom_point() +
+  labs(title = "Linear Regression Animation") +
+  theme_minimal()
+
+# Function to draw regression line at each step
+draw_lm <- function(step) {
+  coef <- coef(lm_model)
+  slope <- coef[2] * step
+  intercept <- coef[1] + coef[2] * mean(data$x)
+  abline(a = intercept, b = slope, col = "red")
+}
+
+# Animate the regression line
+animated_plot <- base_plot +
+  annotate(geom = "blank", x = 0, y = 0) +
+  enter_grow() +
+  exit_fade() +
+  shadow_mark(draw_lm, frames = length(data$x), id = "step") +
+  labs(title = "Step: {frame}")+ 
+  theme(aspect.ratio = 1)
+
+# Render the animation
+#animate(animated_plot, nframes = 100, fps = 10,width=800, height=600)
+
+
+
+```
+```{r}
+# Underconstruction
+
+# set.seed(1)
+# f <- function(x1,x2){ dnorm(x1-0.5, sd=0.2)*dnorm(x2-0.5, sd=0.2) }
+# n <- 1000
+# X <- matrix(runif(n*2), n,2)
+# y <- f(X[,1],X[,2]) + rnorm(n,sd=0.4)
+# 
+# 
+# # Compute ˆf(x0, y0) and plot ˆf(x0, y0) and f(x0, y0) for (x0, y0) ∈ {(x, y) :
+# # x ∈ {1/21, 2/21, . . . , 20/21}, y ∈ {1/11, 2/11, . . . , 10/11}}, and then compute the ISE.
+# h0=0.05
+# xlist <- (1:20)/21; ylist <- (1:10)/11
+# n1 <- length(xlist); n2 <- length(ylist)
+# zm <- matrix(0, n1, n2)
+# for (i in 1:n1){ for (j in 1:n2){ zm[i,j] <- f(xlist[i], ylist[j]) } }
+# f.persp <- persp(xlist, ylist, zm, theta=20)
+# for (i in 1:n1){
+#   xi <- xlist[i]
+#   fhat.xi <- rep(0, n2)
+#   for (j in 1:n2){
+#     fhat.xi[j] <- ker.est(X, y, rep(h0,2), c(xi,ylist[j]))
+#   }
+#   lines(trans3d(xi, ylist, fhat.xi, pmat=f.persp), col=2)
+# }
+# dif1 <- function(u, v){ (f(u,v)-ker.est(X, y, rep(h0,2), c(u,v)))^2 }
+# tem1 <- function(u){
+#   tem2 <- function(v){ dif1(u,v)}
+#   vtem2 <- Vectorize(tem2)
+#   return(integrate(vtem2, 0, 1)$value)
+# }
+# vtem1 <- Vectorize(tem1)
+# integrate(vtem1, 0,1)$value
+# plot(ksmooth(mtcars$wt, mtcars$disp,kernel = "normal",bandwidth = .5), type = 'l')
+# plot(ksmooth(mtcars$wt, mtcars$disp,kernel = "box",bandwidth = .5), type = 'l')
+# 
+# 
+# plot(ksmooth(mtcars$wt, mtcars$disp,kernel = "normal",bandwidth = 1), type = 'l')
+# plot(ksmooth(mtcars$wt, mtcars$disp,kernel = "box",bandwidth = 1), type = 'l')
+# 
+# plot(ksmooth(mtcars$wt, mtcars$disp,kernel = "normal",bandwidth = 3), type = 'l')
+# plot(ksmooth(mtcars$wt, mtcars$disp,kernel = "box",bandwidth = 3), type = 'l')
+# 
+# plot((crime$population)/1000000, crime$homicide)
+# crime[ -c(crime[crime$state_name=="",])]
+# plot(crime$violent_crime, crime$robbery)
+```
+
+
+
+
+## References
+https://towardsdatascience.com/kernel-regression-made-easy-to-understand-86caf2d2b844
+
+https://teazrq.github.io/SMLR/kernel-smoothing.html
+
+https://bowtiedraptor.substack.com/p/kernel-regression
+
+## Intro the data
+free.sulfur.dioxide: SO2 available to react and thus exhibits both germicidal and antioxidant properties
+total.sulfur.dioxide : self explanatory
+```{r, echo=TRUE}
+red_wine <- read.csv("http://archive.ics.uci.edu/ml/machine-learning-databases/wine-quality/winequality-red.csv", sep = ";")
+red_wine <- red_wine[, c("free.sulfur.dioxide", "total.sulfur.dioxide")]
+head(red_wine)
+```
+```{r}
+# the following code is suppose to get the same data, but my rstudio cant load it.
+# library(rattle)
+# data(winequality)
+# head(winequality$red)
+```
+
+## Compare two types of kernel
+```{r}
+# Set the seed for reproducibility
+set.seed(52)
+
+# Split the data into training and testing sets
+train_indices <- sample(1:nrow(red_wine), 0.6 * nrow(red_wine))  # 70% of data for training
+train_data <- red_wine[train_indices, ]
+test_data <- red_wine[-train_indices, ]
+
+# Perform kernel smoothing
+log_train_predictor <- log(train_data$total.sulfur.dioxide)
+normal_kernel_model <- ksmooth(log_train_predictor, train_data$free.sulfur.dioxide, kernel = "normal", bandwidth = 0.8)
+box_kernel_model <- ksmooth(log_train_predictor, train_data$free.sulfur.dioxide, kernel = "box", bandwidth = 0.8)
+```
+
+Usage: ksmooth(x, y, kernel = c("box", "normal"), bandwidth = 0.5,
+        range.x = range(x),
+        n.points = max(100L, length(x)), x.points)
+```{r}
+# Plot the smoothed curve
+# Create the ggplot object
+plot_data <- data.frame(log_total_sulfur_dioxide = log(train_data$total.sulfur.dioxide),
+                        free_sulfur_dioxide = train_data$free.sulfur.dioxide)
+
+# Combine the x and y values of both kernel models into a single data frame
+kernel_data <- data.frame(x = c(normal_kernel_model$x, box_kernel_model$x),
+                          y = c(normal_kernel_model$y, box_kernel_model$y),
+                          model = rep(c("Normal", "Box"), each = length(normal_kernel_model$x)))
+
+ker<- rbind(data.frame(normal_kernel_model, model = "Normal"),
+            data.frame(box_kernel_model, model = "Box"))
+
+ggplot(data = plot_data, aes(x = log_total_sulfur_dioxide, y = free_sulfur_dioxide)) +
+  geom_point(shape = 1) +
+  geom_line(data = ker, aes(x = x, y = y, color = model)) +
+  labs(title = "Kernel Smoothing Model Line on Training Data)",
+       x = "Logged Total Sulfur Dioxide",
+       y = "Free Sulfur Dioxide",
+       color = "Kernel Type") +
+  theme_minimal() +
+  scale_color_manual(values = c("red", "blue"))
+
+```
+
+## Kernel model on test data and test the accuracy
+```{r}
+# plot the training kernel on the testing point
+# Create the ggplot object
+normal_kernel_df <- data.frame(x = normal_kernel_model$x, y = normal_kernel_model$y) # create a data frame for normal kernel model
+box_kernel_df <- data.frame(x = box_kernel_model$x, y = box_kernel_model$y) # create a data frame for box kernel model
+plot_data <- data.frame(log_total_sulfur_dioxide = log(test_data$total.sulfur.dioxide),
+                        free_sulfur_dioxide = test_data$free.sulfur.dioxide)
+ggplot() +
+  geom_point(data = plot_data, aes(x = log_total_sulfur_dioxide, y = free_sulfur_dioxide), shape = 1) +  # plot points
+  geom_line(data = ker, aes(x = x, y = y, color = model)) +
+  labs(title = "Kernel Smoothing Model Line on Training Data)",
+       x = "Logged Total Sulfur Dioxide",
+       y = "Free Sulfur Dioxide",
+       color = "Kernel Type") +
+  theme_minimal() +
+  scale_color_manual(values = c("red", "blue"))
+  
+
+# truncate the test data. When evaluating a model, it's essential to ensure that the data used for testing falls within the same range as the data used for training. If the test data contains values outside the range of the training data, the model might encounter situations it hasn't seen before, leading to unreliable predictions.
+test_data_truncated <- test_data[log(test_data$total.sulfur.dioxide) >= min(log_train_predictor) & 
+                                 log(test_data$total.sulfur.dioxide) <= max(log_train_predictor), ]
+# compute RMSE for gaussian kernel
+normal_kernel_model_prediction <- approx(normal_kernel_model$x, normal_kernel_model$y, log(test_data_truncated$total.sulfur.dioxide))
+normal_kernerl_model_accuracy <- sqrt(mean((normal_kernel_model_prediction$y - test_data_truncated$free.sulfur.dioxide)^2))
+cat("RMSE for normal kernerl model: ", normal_kernerl_model_accuracy, "\n")
+
+# compute RMSE for box kernel
+box_kernel_model_prediction <- approx(box_kernel_model$x, box_kernel_model$y, log(test_data_truncated$total.sulfur.dioxide))
+box_kernerl_model_accuracy <- sqrt(mean((box_kernel_model_prediction$y - test_data_truncated$free.sulfur.dioxide)^2))
+cat("RMSE for box kernerl model: ", box_kernerl_model_accuracy, "\n")
+```
